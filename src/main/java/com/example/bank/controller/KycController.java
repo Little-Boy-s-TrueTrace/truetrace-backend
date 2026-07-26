@@ -11,6 +11,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/kyc")
@@ -26,9 +29,12 @@ public class KycController {
     public ResponseEntity<?> createSession(
             @RequestParam("customerName") String customerName,
             @RequestParam("cccdNumber") String cccdNumber,
-            @RequestParam(value = "selfie", required = false) MultipartFile selfie,
-            @RequestParam(value = "idFront", required = false) MultipartFile idFront,
-            @RequestParam(value = "idBack", required = false) MultipartFile idBack) {
+            @RequestParam("selfie") MultipartFile selfie,
+            @RequestParam("idFront") MultipartFile idFront,
+            @RequestParam("idBack") MultipartFile idBack) throws java.io.IOException {
+        if (selfie.isEmpty() || idFront.isEmpty() || idBack.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "All KYC images are required"));
+        }
         
         KycSession session = new KycSession();
         session.setSessionId(UUID.randomUUID().toString());
@@ -38,13 +44,20 @@ public class KycController {
         session.setCreatedAt(LocalDateTime.now());
         session.setUpdatedAt(LocalDateTime.now());
         
-        // Mock save paths
-        session.setSelfieImagePath("path/to/selfie/" + session.getSessionId());
-        session.setIdFrontImagePath("path/to/front/" + session.getSessionId());
-        session.setIdBackImagePath("path/to/back/" + session.getSessionId());
+        // Store opaque evidence references only. Raw biometric data is sent on the
+        // short-lived event and is not written to the application database.
+        session.setSelfieImagePath("evidence://" + session.getSessionId() + "/selfie");
+        session.setIdFrontImagePath("evidence://" + session.getSessionId() + "/id-front");
+        session.setIdBackImagePath("evidence://" + session.getSessionId() + "/id-back");
         
         kycSessionRepository.save(session);
-        eventPublisher.publishKycEvent(session);
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("session_id", session.getSessionId());
+        event.put("customer_name", customerName);
+        event.put("cccd_number", cccdNumber);
+        event.put("face_image_base64", Base64.getEncoder().encodeToString(selfie.getBytes()));
+        event.put("timestamp", session.getCreatedAt().toString());
+        eventPublisher.publishKycEvent(event);
         
         return ResponseEntity.ok(session);
     }
@@ -75,6 +88,7 @@ public class KycController {
             session.setFaceMatchScore(updated.getFaceMatchScore());
             session.setDocumentIntegrityScore(updated.getDocumentIntegrityScore());
             session.setLivenessScore(updated.getLivenessScore());
+            session.setCccdValid(updated.getCccdValid());
             session.setUpdatedAt(LocalDateTime.now());
             kycSessionRepository.save(session);
             return ResponseEntity.ok(session);

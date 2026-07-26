@@ -12,7 +12,9 @@ import java.util.concurrent.CompletableFuture;
 public class EventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(EventPublisher.class);
-    private static final String TOPIC = "truetrace.transactions";
+    private static final String TOPIC_KYC = "truetrace.kyc.submissions";
+    private static final String TOPIC_TRANSACTIONS = "truetrace.transactions";
+    private static final String TOPIC_ALERTS = "truetrace.alerts";
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -23,35 +25,36 @@ public class EventPublisher {
         if (kafkaTemplate == null) {
             log.warn("[Kafka] KafkaTemplate not available. Events will NOT be published to Kafka.");
         } else {
-            log.info("[Kafka] EventPublisher initialized. Publishing to topic: {}", TOPIC);
+            log.info("[Kafka] EventPublisher initialized for TrueTrace compliance topics");
         }
     }
 
     public void publishKycEvent(Object event) {
-        publishEvent("kyc", event);
+        publishEvent(TOPIC_KYC, "kyc", event);
     }
 
     public void publishTransactionEvent(Object event) {
-        publishEvent("transaction", event);
+        publishEvent(TOPIC_TRANSACTIONS, "transaction", event);
     }
 
     public void publishAmlAlert(Object event) {
-        publishEvent("aml_alert", event);
+        publishEvent(TOPIC_ALERTS, "aml_alert", event);
     }
 
-    private void publishEvent(String key, Object event) {
+    private void publishEvent(String topic, String key, Object event) {
         if (kafkaTemplate == null) {
             return;
         }
         try {
             CompletableFuture<SendResult<String, Object>> future =
-                    kafkaTemplate.send(TOPIC, key, event);
+                    kafkaTemplate.send(topic, key, event);
 
             future.whenComplete((result, ex) -> {
                 if (ex != null) {
                     log.error("[Kafka] Failed to publish event: {}", ex.getMessage());
                 } else {
-                    log.info("[Kafka] Published event with key={} to partition={} offset={}",
+                    log.info("[Kafka] Published event topic={} key={} partition={} offset={}",
+                            topic,
                             key,
                             result.getRecordMetadata().partition(),
                             result.getRecordMetadata().offset());

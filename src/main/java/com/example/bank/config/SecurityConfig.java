@@ -21,6 +21,8 @@ public class SecurityConfig {
 
     @Autowired
     private JwtRequestFilter jwtRequestFilter;
+    @Autowired
+    private InternalApiTokenFilter internalApiTokenFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -66,6 +68,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(internalApiTokenFilter, JwtRequestFilter.class);
         return http.build();
     }
 

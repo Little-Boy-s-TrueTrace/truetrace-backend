@@ -20,7 +20,7 @@
         <spring-security.version>6.5.9</spring-security.version>
         <jackson-bom.version>2.18.8</jackson-bom.version>
         <tomcat.version>10.1.55</tomcat.version>
-        <postgresql.version>42.7.11</postgresql.version>
+        <postgresql.version>42.7.12</postgresql.version>
     </properties>
     <dependencies>
         <dependency>

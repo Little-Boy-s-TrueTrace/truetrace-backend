@@ -1,0 +1,5 @@
+package com.example.bank.model;
+
+public enum AlertType {
+    MULE_SPLIT, STRUCTURING, CIRCULAR_FLOW, VELOCITY_ANOMALY, RAPID_MOVEMENT, FAN_IN, NEW_ACCOUNT_ABUSE
+}

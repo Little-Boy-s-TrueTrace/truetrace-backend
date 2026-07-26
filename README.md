@@ -75,3 +75,5 @@ mvn clean package
 - Never use seeded users in production.
 - Use TLS at the gateway and rotate JWT/internal tokens independently.
 - Treat logs as sensitive: they may contain compliance payload context and customer identifiers.
+
+<!-- CI/CD Sync Trigger -->

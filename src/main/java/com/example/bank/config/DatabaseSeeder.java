@@ -15,12 +15,14 @@ import com.example.bank.repository.KycSessionRepository;
 import com.example.bank.repository.AmlAlertRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.math.BigDecimal;
 
+@ConditionalOnProperty(name = "truetrace.demo.seed-enabled", havingValue = "true", matchIfMissing = true)
 @Component
 public class DatabaseSeeder implements CommandLineRunner {
 

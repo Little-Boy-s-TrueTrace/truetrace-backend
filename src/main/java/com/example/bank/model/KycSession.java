@@ -15,6 +15,7 @@ public class KycSession {
     private String sessionId;
 
     private String customerId;
+    private String accountId;
     private String customerName;
 
     @Enumerated(EnumType.STRING)
@@ -53,6 +54,9 @@ public class KycSession {
     
     public String getCustomerId() { return customerId; }
     public void setCustomerId(String customerId) { this.customerId = customerId; }
+
+    public String getAccountId() { return accountId; }
+    public void setAccountId(String accountId) { this.accountId = accountId; }
     
     public String getCustomerName() { return customerName; }
     public void setCustomerName(String customerName) { this.customerName = customerName; }

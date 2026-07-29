@@ -31,6 +31,7 @@ public class InternalApiTokenFilter extends OncePerRequestFilter {
         String method = request.getMethod();
         String path = request.getRequestURI();
         boolean requiresInternalToken = path.startsWith("/api/aml/freeze/")
+                || ("GET".equals(method) && path.startsWith("/api/compliance/accounts/"))
                 || ("POST".equals(method) && path.equals("/api/aml/alerts"))
                 || ("POST".equals(method) && path.equals("/api/str/reports"))
                 || ("PUT".equals(method)

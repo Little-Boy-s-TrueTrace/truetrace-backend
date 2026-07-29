@@ -2,10 +2,12 @@ package com.example.bank.controller;
 
 import com.example.bank.model.KycSession;
 import com.example.bank.model.KycStatus;
+import com.example.bank.repository.AccountRepository;
 import com.example.bank.repository.KycSessionRepository;
+import com.example.bank.repository.UserRepository;
 import com.example.bank.service.EventPublisher;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
@@ -19,11 +21,21 @@ import java.util.Map;
 @RequestMapping("/api/kyc")
 public class KycController {
 
-    @Autowired
-    private KycSessionRepository kycSessionRepository;
+    private final KycSessionRepository kycSessionRepository;
+    private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
+    private final EventPublisher eventPublisher;
 
-    @Autowired
-    private EventPublisher eventPublisher;
+    public KycController(
+            KycSessionRepository kycSessionRepository,
+            UserRepository userRepository,
+            AccountRepository accountRepository,
+            EventPublisher eventPublisher) {
+        this.kycSessionRepository = kycSessionRepository;
+        this.userRepository = userRepository;
+        this.accountRepository = accountRepository;
+        this.eventPublisher = eventPublisher;
+    }
 
     @PostMapping("/sessions")
     public ResponseEntity<?> createSession(
@@ -35,11 +47,23 @@ public class KycController {
         if (selfie.isEmpty() || idFront.isEmpty() || idBack.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "All KYC images are required"));
         }
-        
+
+        String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+        var currentUser = userRepository.findByUsername(currentUsername).orElse(null);
+        if (currentUser == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Authenticated user not found"));
+        }
+        var currentAccount = accountRepository.findByUser(currentUser).orElse(null);
+        if (currentAccount == null) {
+            return ResponseEntity.status(409).body(Map.of("error", "Customer account not found"));
+        }
+
         KycSession session = new KycSession();
         session.setSessionId(UUID.randomUUID().toString());
-        session.setCustomerName(customerName);
-        session.setCccdNumber(cccdNumber);
+        session.setCustomerId(currentUser.getId().toString());
+        session.setAccountId(currentAccount.getAccountNumber());
+        session.setCustomerName(currentUser.getFullName());
+        session.setCccdNumber(cccdNumber.trim());
         session.setStatus(KycStatus.PENDING);
         session.setCreatedAt(LocalDateTime.now());
         session.setUpdatedAt(LocalDateTime.now());
@@ -53,9 +77,15 @@ public class KycController {
         kycSessionRepository.save(session);
         Map<String, Object> event = new LinkedHashMap<>();
         event.put("session_id", session.getSessionId());
-        event.put("customer_name", customerName);
-        event.put("cccd_number", cccdNumber);
+        event.put("customer_id", session.getCustomerId());
+        event.put("account_id", session.getAccountId());
+        event.put("customer_name", session.getCustomerName());
+        event.put("cccd_number", session.getCccdNumber());
+        event.put("selfie_filename", org.springframework.util.StringUtils.cleanPath(
+                selfie.getOriginalFilename() == null ? "selfie" : selfie.getOriginalFilename()));
         event.put("face_image_base64", Base64.getEncoder().encodeToString(selfie.getBytes()));
+        event.put("id_front_image_base64", Base64.getEncoder().encodeToString(idFront.getBytes()));
+        event.put("id_back_image_base64", Base64.getEncoder().encodeToString(idBack.getBytes()));
         event.put("timestamp", session.getCreatedAt().toString());
         eventPublisher.publishKycEvent(event);
         
@@ -63,11 +93,26 @@ public class KycController {
     }
 
     @GetMapping("/sessions")
-    public ResponseEntity<List<KycSession>> listSessions(@RequestParam(required = false) KycStatus status) {
-        if (status != null) {
-            return ResponseEntity.ok(kycSessionRepository.findByStatus(status));
+    public ResponseEntity<List<KycSession>> listSessions(
+            @RequestParam(required = false) KycStatus status,
+            @RequestParam(defaultValue = "false") boolean mine) {
+        if (mine) {
+            String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+            var currentUser = userRepository.findByUsername(currentUsername).orElse(null);
+            if (currentUser == null) {
+                return ResponseEntity.ok(List.of());
+            }
+            List<KycSession> sessions = kycSessionRepository
+                    .findByCustomerIdOrderByCreatedAtDesc(currentUser.getId().toString());
+            if (status != null) {
+                sessions = sessions.stream().filter(session -> session.getStatus() == status).toList();
+            }
+            return ResponseEntity.ok(sessions);
         }
-        return ResponseEntity.ok(kycSessionRepository.findAll());
+        if (status != null) {
+            return ResponseEntity.ok(kycSessionRepository.findByStatusOrderByCreatedAtDesc(status));
+        }
+        return ResponseEntity.ok(kycSessionRepository.findAllByOrderByCreatedAtDesc());
     }
 
     @GetMapping("/sessions/{sessionId}")

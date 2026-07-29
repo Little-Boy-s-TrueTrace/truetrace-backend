@@ -1,8 +1,10 @@
 package com.example.bank.controller;
 
 import com.example.bank.model.Account;
+import com.example.bank.model.KycStatus;
 import com.example.bank.model.Transaction;
 import com.example.bank.repository.AccountRepository;
+import com.example.bank.repository.KycSessionRepository;
 import com.example.bank.repository.TransactionRepository;
 import com.example.bank.service.TransactionMonitorService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,6 +30,12 @@ public class TransactionController {
 
     @Autowired
     private TransactionMonitorService transactionMonitorService;
+
+    @Autowired
+    private KycSessionRepository kycSessionRepository;
+
+    @org.springframework.beans.factory.annotation.Value("${truetrace.kyc.required-for-transfers:false}")
+    private boolean kycRequiredForTransfers;
 
     @PostMapping("/transfer")
     @Transactional
@@ -72,6 +80,17 @@ public class TransactionController {
         String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
         if (!sourceAccount.getUser().getUsername().equalsIgnoreCase(currentUsername)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Forbidden: You do not own the source account."));
+        }
+
+        if (kycRequiredForTransfers) {
+            String customerId = sourceAccount.getUser().getId().toString();
+            boolean approved = kycSessionRepository.existsByAccountIdAndStatus(
+                    sourceAccount.getAccountNumber(), KycStatus.APPROVED)
+                    || kycSessionRepository.existsByCustomerIdAndStatus(customerId, KycStatus.APPROVED);
+            if (!approved) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "KYC approval is required before transfers."));
+            }
         }
 
         if (amount == null || Double.isNaN(amount) || Double.isInfinite(amount) || amount <= 0) {

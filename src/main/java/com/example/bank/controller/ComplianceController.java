@@ -6,10 +6,13 @@ import com.example.bank.repository.AmlAlertRepository;
 import com.example.bank.repository.KycSessionRepository;
 import com.example.bank.repository.StrReportRepository;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -55,6 +58,32 @@ public class ComplianceController {
                 agent("money-trail", "Transactions Graph Explorer", alerts.count(), now),
                 agent("aml-reporter", "Autonomous STR Report Generator", reports.count(), now)
         );
+    }
+
+    @GetMapping("/compliance/accounts/{accountNumber}/profile")
+    public ResponseEntity<?> accountComplianceProfile(@PathVariable String accountNumber) {
+        var account = accounts.findByAccountNumber(accountNumber).orElse(null);
+        if (account == null) {
+            return ResponseEntity.notFound().build();
+        }
+        String customerId = account.getUser().getId().toString();
+        var latestKyc = kyc.findFirstByAccountIdOrderByCreatedAtDesc(accountNumber)
+                .or(() -> kyc.findFirstByCustomerIdOrderByCreatedAtDesc(customerId));
+
+        Map<String, Object> profile = new LinkedHashMap<>();
+        profile.put("accountNumber", account.getAccountNumber());
+        profile.put("accountStatus", account.getStatus());
+        profile.put("customerId", customerId);
+        profile.put("fullName", account.getUser().getFullName());
+        profile.put("email", account.getUser().getEmail());
+        latestKyc.ifPresent(session -> {
+            profile.put("kycSessionDbId", session.getId());
+            profile.put("kycSessionId", session.getSessionId());
+            profile.put("kycStatus", session.getStatus());
+            profile.put("cccdNumber", session.getCccdNumber());
+            profile.put("cccdValid", session.getCccdValid());
+        });
+        return ResponseEntity.ok(profile);
     }
 
     private Map<String, Object> agent(String id, String name, long count, String now) {

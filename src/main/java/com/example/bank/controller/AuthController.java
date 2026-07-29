@@ -20,6 +20,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    @org.springframework.beans.factory.annotation.Value("${truetrace.registration.initial-balance:0}")
+    private double registrationInitialBalance;
+
     @Autowired
     private UserRepository userRepository;
 
@@ -94,7 +97,7 @@ public class AuthController {
 
         Account account = Account.builder()
                 .accountNumber(accNum)
-                .balance(20000000.0)
+                .balance(Math.max(0, registrationInitialBalance))
                 .currency("VND")
                 .user(user)
                 .build();

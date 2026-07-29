@@ -130,6 +130,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             KycSession kyc = new KycSession();
             kyc.setSessionId(UUID.randomUUID().toString());
             kyc.setCustomerId(alice.getId().toString());
+            kyc.setAccountId(aliceAccount.getAccountNumber());
             kyc.setCustomerName(alice.getFullName());
             kyc.setStatus(KycStatus.PENDING);
             kyc.setCccdNumber("001090123456");

@@ -75,6 +75,14 @@ public class KycController {
         session.setIdBackImagePath("evidence://" + session.getSessionId() + "/id-back");
         
         kycSessionRepository.save(session);
+        
+        String evidenceDir = "/data/evidence/" + session.getSessionId();
+        java.nio.file.Path dir = java.nio.file.Paths.get(evidenceDir);
+        java.nio.file.Files.createDirectories(dir);
+        java.nio.file.Files.write(dir.resolve("selfie.jpg"), selfie.getBytes());
+        java.nio.file.Files.write(dir.resolve("id-front.jpg"), idFront.getBytes());
+        java.nio.file.Files.write(dir.resolve("id-back.jpg"), idBack.getBytes());
+
         Map<String, Object> event = new LinkedHashMap<>();
         event.put("session_id", session.getSessionId());
         event.put("customer_id", session.getCustomerId());
@@ -158,5 +166,26 @@ public class KycController {
             kycSessionRepository.save(session);
             return ResponseEntity.ok(session);
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/sessions/{sessionId}/evidence/{imageType}")
+    public ResponseEntity<byte[]> getEvidence(@PathVariable String sessionId, @PathVariable String imageType) {
+        // Validate imageType is one of: selfie, id-front, id-back
+        if (!List.of("selfie", "id-front", "id-back").contains(imageType)) {
+            return ResponseEntity.badRequest().build();
+        }
+        java.nio.file.Path imagePath = java.nio.file.Paths.get("/data/evidence/" + sessionId + "/" + imageType + ".jpg");
+        if (!java.nio.file.Files.exists(imagePath)) {
+            return ResponseEntity.notFound().build();
+        }
+        try {
+            byte[] bytes = java.nio.file.Files.readAllBytes(imagePath);
+            return ResponseEntity.ok()
+                    .header("Content-Type", "image/jpeg")
+                    .header("Cache-Control", "private, max-age=3600")
+                    .body(bytes);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
     }
 }

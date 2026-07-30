@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.ResponseEntity;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,11 +52,27 @@ public class ComplianceController {
 
     @GetMapping("/agents/status")
     public List<Map<String, Object>> agentStatus() {
-        String now = Instant.now().toString();
+        String kycLastActivity = kyc.findFirstByOrderByIdDesc()
+                .map(session -> session.getUpdatedAt() != null
+                        ? session.getUpdatedAt()
+                        : session.getCreatedAt())
+                .filter(java.util.Objects::nonNull)
+                .map(LocalDateTime::toString)
+                .orElse("never");
+        String amlLastActivity = alerts.findFirstByOrderByIdDesc()
+                .map(alert -> alert.getCreatedAt())
+                .filter(java.util.Objects::nonNull)
+                .map(LocalDateTime::toString)
+                .orElse("never");
+        String strLastActivity = reports.findFirstByOrderByIdDesc()
+                .map(report -> report.getGeneratedAt())
+                .filter(java.util.Objects::nonNull)
+                .map(LocalDateTime::toString)
+                .orElse("never");
         return List.of(
-                agent("deepfake-inspector", "KYC & Deepfake Inspector", kyc.count(), now),
-                agent("money-trail", "Transactions Graph Explorer", alerts.count(), now),
-                agent("aml-reporter", "Autonomous STR Report Generator", reports.count(), now)
+                agent("deepfake-inspector", "KYC & Deepfake Inspector", kyc.count(), kycLastActivity),
+                agent("money-trail", "Transactions Graph Explorer", alerts.count(), amlLastActivity),
+                agent("aml-reporter", "Autonomous STR Report Generator", reports.count(), strLastActivity)
         );
     }
 
@@ -86,15 +102,13 @@ public class ComplianceController {
         return ResponseEntity.ok(profile);
     }
 
-    private Map<String, Object> agent(String id, String name, long count, String now) {
+    private Map<String, Object> agent(String id, String name, long count, String lastActivity) {
         return Map.of(
                 "agentId", id,
                 "agentName", name,
-                "status", "RUNNING",
-                "lastActivity", now,
-                "processedCount", count,
-                "errorCount", 0,
-                "queueDepth", 0
+                "status", "UNKNOWN",
+                "lastActivity", lastActivity,
+                "processedCount", count
         );
     }
 }

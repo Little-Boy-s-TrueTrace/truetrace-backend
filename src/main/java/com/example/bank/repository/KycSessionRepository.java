@@ -16,6 +16,7 @@ public interface KycSessionRepository extends JpaRepository<KycSession, Long> {
     List<KycSession> findAllByOrderByCreatedAtDesc();
     List<KycSession> findByStatusOrderByCreatedAtDesc(KycStatus status);
     List<KycSession> findByCustomerIdOrderByCreatedAtDesc(String customerId);
+    Optional<KycSession> findFirstByOrderByIdDesc();
     Optional<KycSession> findFirstByAccountIdOrderByCreatedAtDesc(String accountId);
     Optional<KycSession> findFirstByCustomerIdOrderByCreatedAtDesc(String customerId);
     boolean existsByAccountIdAndStatus(String accountId, KycStatus status);

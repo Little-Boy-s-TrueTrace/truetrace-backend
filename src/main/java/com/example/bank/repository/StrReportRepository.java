@@ -11,6 +11,7 @@ import java.util.Optional;
 @Repository
 public interface StrReportRepository extends JpaRepository<StrReport, Long> {
     Optional<StrReport> findByReportId(String reportId);
+    Optional<StrReport> findFirstByOrderByIdDesc();
     List<StrReport> findByStatus(ReportStatus status);
     List<StrReport> findByAlertId(Long alertId);
 }

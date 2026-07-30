@@ -11,6 +11,7 @@ import java.util.Optional;
 @Repository
 public interface AmlAlertRepository extends JpaRepository<AmlAlert, Long> {
     Optional<AmlAlert> findByAlertId(String alertId);
+    Optional<AmlAlert> findFirstByOrderByIdDesc();
     List<AmlAlert> findByStatus(AlertStatus status);
     List<AmlAlert> findByPrimaryAccountNumber(String primaryAccountNumber);
 }

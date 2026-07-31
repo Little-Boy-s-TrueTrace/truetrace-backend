@@ -44,6 +44,9 @@ public class AmlAlert {
 
     private Integer timeWindowSeconds = 60;
 
+    @Transient
+    private String accountStatus;
+
     private LocalDateTime createdAt;
     private LocalDateTime resolvedAt;
 
@@ -105,4 +108,7 @@ public class AmlAlert {
     
     public String getResolutionNotes() { return resolutionNotes; }
     public void setResolutionNotes(String resolutionNotes) { this.resolutionNotes = resolutionNotes; }
+
+    public String getAccountStatus() { return accountStatus; }
+    public void setAccountStatus(String accountStatus) { this.accountStatus = accountStatus; }
 }

@@ -25,16 +25,28 @@ public class AmlController {
 
     @GetMapping("/alerts")
     public ResponseEntity<List<AmlAlert>> listAlerts(@RequestParam(required = false) AlertStatus status) {
-        if (status != null) {
-            return ResponseEntity.ok(amlAlertRepository.findByStatus(status));
+        List<AmlAlert> list = (status != null)
+                ? amlAlertRepository.findByStatus(status)
+                : amlAlertRepository.findAll();
+        for (AmlAlert alert : list) {
+            if (alert.getPrimaryAccountNumber() != null) {
+                accountRepository.findByAccountNumber(alert.getPrimaryAccountNumber())
+                        .ifPresent(acc -> alert.setAccountStatus(acc.getStatus()));
+            }
         }
-        return ResponseEntity.ok(amlAlertRepository.findAll());
+        return ResponseEntity.ok(list);
     }
 
     @GetMapping("/alerts/{alertId}")
     public ResponseEntity<?> getAlert(@PathVariable String alertId) {
         return amlAlertRepository.findByAlertId(alertId)
-                .map(ResponseEntity::ok)
+                .map(alert -> {
+                    if (alert.getPrimaryAccountNumber() != null) {
+                        accountRepository.findByAccountNumber(alert.getPrimaryAccountNumber())
+                                .ifPresent(acc -> alert.setAccountStatus(acc.getStatus()));
+                    }
+                    return ResponseEntity.ok(alert);
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 

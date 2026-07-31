@@ -91,7 +91,7 @@ public class AmlAlert {
     public String getCurrency() { return currency; }
     public void setCurrency(String currency) { this.currency = currency; }
 
-    public Integer getTimeWindowSeconds() { return timeWindowSeconds; }
+    public Integer getTimeWindowSeconds() { return timeWindowSeconds != null ? timeWindowSeconds : 60; }
     public void setTimeWindowSeconds(Integer timeWindowSeconds) { this.timeWindowSeconds = timeWindowSeconds; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }

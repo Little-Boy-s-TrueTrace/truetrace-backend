@@ -43,6 +43,9 @@ public class AmlController {
         alert.setAlertId(UUID.randomUUID().toString());
         alert.setStatus(AlertStatus.OPEN);
         alert.setCreatedAt(LocalDateTime.now());
+        if (alert.getTimeWindowSeconds() == null) {
+            alert.setTimeWindowSeconds(60);
+        }
         amlAlertRepository.save(alert);
         return ResponseEntity.ok(alert);
     }

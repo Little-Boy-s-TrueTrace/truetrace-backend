@@ -42,7 +42,7 @@ public class AmlAlert {
 
     private String currency = "VND";
 
-    private Integer timeWindowSeconds;
+    private Integer timeWindowSeconds = 60;
 
     private LocalDateTime createdAt;
     private LocalDateTime resolvedAt;

@@ -21,6 +21,9 @@ import java.util.Map;
 @RequestMapping("/api/kyc")
 public class KycController {
 
+    @org.springframework.beans.factory.annotation.Value("${truetrace.evidence.dir:}")
+    private String customEvidenceDir;
+
     private final KycSessionRepository kycSessionRepository;
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
@@ -35,6 +38,34 @@ public class KycController {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
         this.eventPublisher = eventPublisher;
+    }
+
+    private java.nio.file.Path resolveEvidenceDir(String sessionId) {
+        if (customEvidenceDir != null && !customEvidenceDir.isBlank()) {
+            return java.nio.file.Paths.get(customEvidenceDir, sessionId);
+        }
+        java.nio.file.Path defaultPath = java.nio.file.Paths.get("/data/evidence", sessionId);
+        try {
+            java.nio.file.Files.createDirectories(defaultPath);
+            return defaultPath;
+        } catch (Exception e) {
+            java.nio.file.Path fallbackPath = java.nio.file.Paths.get(System.getProperty("java.io.tmpdir"), "truetrace", "evidence", sessionId);
+            try {
+                java.nio.file.Files.createDirectories(fallbackPath);
+            } catch (Exception ignored) {}
+            return fallbackPath;
+        }
+    }
+
+    private java.nio.file.Path resolveEvidenceFile(String sessionId, String imageType) {
+        if (customEvidenceDir != null && !customEvidenceDir.isBlank()) {
+            return java.nio.file.Paths.get(customEvidenceDir, sessionId, imageType + ".jpg");
+        }
+        java.nio.file.Path primary = java.nio.file.Paths.get("/data/evidence", sessionId, imageType + ".jpg");
+        if (java.nio.file.Files.exists(primary)) {
+            return primary;
+        }
+        return java.nio.file.Paths.get(System.getProperty("java.io.tmpdir"), "truetrace", "evidence", sessionId, imageType + ".jpg");
     }
 
     @PostMapping("/sessions")
@@ -76,9 +107,7 @@ public class KycController {
         
         kycSessionRepository.save(session);
         
-        String evidenceDir = "/data/evidence/" + session.getSessionId();
-        java.nio.file.Path dir = java.nio.file.Paths.get(evidenceDir);
-        java.nio.file.Files.createDirectories(dir);
+        java.nio.file.Path dir = resolveEvidenceDir(session.getSessionId());
         java.nio.file.Files.write(dir.resolve("selfie.jpg"), selfie.getBytes());
         java.nio.file.Files.write(dir.resolve("id-front.jpg"), idFront.getBytes());
         java.nio.file.Files.write(dir.resolve("id-back.jpg"), idBack.getBytes());
@@ -174,7 +203,7 @@ public class KycController {
         if (!List.of("selfie", "id-front", "id-back").contains(imageType)) {
             return ResponseEntity.badRequest().build();
         }
-        java.nio.file.Path imagePath = java.nio.file.Paths.get("/data/evidence/" + sessionId + "/" + imageType + ".jpg");
+        java.nio.file.Path imagePath = resolveEvidenceFile(sessionId, imageType);
         if (!java.nio.file.Files.exists(imagePath)) {
             return ResponseEntity.notFound().build();
         }
